@@ -39,7 +39,7 @@ function getMapOfRelationships(relationshipDefinitions){
     if(!finalResult[relatedEntityName]){
       finalResult[relatedEntityName] = []
     }
-    finalResult.push(name)
+    finalResult[relatedEntityName].push(name)
     return finalResult
   }, {})
 }
