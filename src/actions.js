@@ -1,35 +1,37 @@
 // @flow
 import {createAction} from 'redux-actions'
-import actionNames from './actionNames'
+import actionNames from 'resource-action-types'
+
+type $id = string | number
+type $relationship = {
+  relationshipName: string,
+  id: $id,
+  relationshipValue: $id | $id[]
+}
+
+type $relationships = {
+  name: string;
+  relationshipName: string;
+  idValuePairs: Array<{id: $id, value: $id | $id[]}>;
+}
+
 export default {
-  create(entityName: string, entity: Object) {
-    if (entity instanceof Error) {
-      return createAction(actionNames.create(entityName))(entity)
+  link(entityName: string, relationship: $relationship) {
+    if (relationship instanceof Error) {
+      return createAction(actionNames.link(entityName))(relationship)
     }
-    return createAction(actionNames.create(entityName))({entity})
+    return createAction(actionNames.link(entityName))({relationship})
   },
-  update(entityName: string, entity: Object) {
-    if (entity instanceof Error) {
-      return createAction(actionNames.update(entityName))(entity)
+  unlink(entityName: string, relationship: $relationship) {
+    if (relationship instanceof Error) {
+      return createAction(actionNames.unlink(entityName))(relationship)
     }
-    return createAction(actionNames.update(entityName))({entity})
+    return createAction(actionNames.unlink(entityName))({relationship})
   },
-  remove(entityName: string, entityId: string | number) {
-    if (entityId instanceof Error) {
-      return createAction(actionNames.remove(entityName))(entityId)
+  indexLink(entityName: string, relationships: $relationships) {
+    if (relationships instanceof Error) {
+      return createAction(actionNames.indexLink(entityName))(relationships)
     }
-    return createAction(actionNames.remove(entityName))({entityId})
+    return createAction(actionNames.indexLink(entityName))({relationships})
   },
-  get(entityName: string, entity: Object) {
-    if (entity instanceof Error) {
-      return createAction(actionNames.get(entityName))(entity)
-    }
-    return createAction(actionNames.get(entityName))({entity})
-  },
-  index(entityName: string, entities: Object[]) {
-    if (entities instanceof Error) {
-      return createAction(actionNames.index(entityName))(entities)
-    }
-    return createAction(actionNames.index(entityName))({entities})
-  }
 }

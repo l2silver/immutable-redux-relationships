@@ -1,34 +1,38 @@
 {
-  "name": "redux-immutable-crud",
+  "name": "redux-immutable-relationships",
   "version": "1.0.0",
-  "description": "Actions and handlers for immutable crud operations",
+  "description": "Actions and handlers for immutable relationships operations",
   "main": "dist/index.js",
   "scripts": {
+    "clean": "rm -rf dist",
+    "build": "babel src --out-dir dist",
+    "prepublish": "npm run clean && npm run build",
     "test": "jest src",
     "flow": "flow",
     "flowtyped": "flow-typed"
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/l2silver/redux-immutable-crud.git"
+    "url": "git+https://github.com/l2silver/redux-immutable-relationships.git"
   },
   "keywords": [
     "redux",
     "immutable",
-    "crud"
+    "relationships"
   ],
   "author": "Leigh Silverstein",
   "license": "ISC",
   "bugs": {
-    "url": "https://github.com/l2silver/redux-immutable-crud/issues"
+    "url": "https://github.com/l2silver/redux-immutable-relationships/issues"
   },
-  "homepage": "https://github.com/l2silver/redux-immutable-crud#readme",
+  "homepage": "https://github.com/l2silver/redux-immutable-relationships#readme",
   "dependencies": {
     "humps": "^2.0.0",
-    "redux-actions": "^2.0.1"
+    "redux-actions": "^2.0.1",
+    "resource-action-types": "^1.0.1",
+    "immutable": "^3.8.1"
   },
   "devDependencies": {
-    "immutable": "^3.8.1",
     "jest": "^19.0.2",
     "babel-cli": "^6.23.0",
     "babel-core": "^6.23.1",

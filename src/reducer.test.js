@@ -1,50 +1,50 @@
 // @flow
-import Immutable, {Record, Map} from 'immutable'
-import initializeReducer from './reducer'
+import * as Immutable from 'immutable'
+import relationshipReducer from './reducer'
 import actions from './actions'
-const createReducer = initializeReducer(Immutable)
+import {MANY, ONE} from './relationshipTypes'
+
 const getId = ()=>Math.round((Math.random() * 1000000))
-describe('reducer', function () {
+const {Record, Map, OrderedSet} = Immutable
+
+describe('entityReducer', function () {
   const name = 'users'
-  const UserModel = class extends Record({id: 0, fullName: ''}) {}
+  const relationshipDefinitions = [
+    {
+      relatedEntityName: 'people',
+      name: 'friends',
+      type: MANY
+    },
+    {
+      relatedEntityName: 'people',
+      name: 'friend',
+      type: ONE
+    },
+  ]
+  
   function getDefaultState (initialState = {}) {
-    return new (Record({data: new Map(initialState)}))()
+    return new (Record({friend: new Map(), friends: new Map(initialState)}))()
   }
   it('returns default state', function () {
     const defaultState = getDefaultState()
-    const userReducer = createReducer({name, Model: UserModel})
-    const result = userReducer(undefined, {type: 1})
-    expect(result.toObject()).toEqual(defaultState.toObject())
+    const usersReducer = relationshipReducer({name, relationshipDefinitions})
+    expect(usersReducer(undefined, {type: 1}).toObject()).toEqual(defaultState.toObject())
   })
   it('returns default state with config', function () {
-    const defaultState = new (Record({data: new Map(), otherData: new Map()}))()
-    const userReducer = createReducer({name, Model: UserModel, defaultStateConfig: {otherData: new Map()}})
-    expect(userReducer(undefined, {type: 1}).toObject()).toEqual(defaultState.toObject())
+    const defaultState = new (Record({friend: new Map(), friends: new Map(), otherData: new Map()}))()
+    const usersReducer = relationshipReducer({name, relationshipDefinitions, defaultStateConfig: {otherData: new Map()}})
+    expect(usersReducer(undefined, {type: 1}).toObject()).toEqual(defaultState.toObject())
   })
   describe('actions', function () {
-    const userReducer = createReducer({name, Model: UserModel})
-    it('creates', function () {
-      const id = getId()
-      const patient = new UserModel({id})
-      const createAction = actions.create(name, {id})
-      const data = userReducer(undefined, createAction).data
-      expect(data).toEqual(new Map({[id]: patient}))
+    const usersReducer = relationshipReducer({name, relationshipDefinitions})
+    const friendId = getId()
+    it('creates Single', function () {
+      const id = getId()  
+      expect(usersReducer(undefined, actions.link(name, {relationshipName: 'friend', id, relationshipValue: friendId})).friend).toEqual(new Map({[id]: friendId}))
     })
-    it('updates', function () {
-      const id = getId()
-      expect(userReducer(getDefaultState({[id]: new UserModel({id})}), actions.update(name, {id, fullName: 'John'})).data).toEqual(new Map({[id]: new UserModel({id, fullName: 'John'})}))
-    })
-    it('removes', function () {
-      const id = getId()
-      expect(userReducer(getDefaultState({[id]: new UserModel({id})}), actions.remove(name, id)).data).toEqual(new Map())
-    })
-    it('gets', function () {
-      const id = getId()
-      expect(userReducer(getDefaultState(), actions.get(name, {id})).data).toEqual(new Map({[id]: new UserModel({id})}))
-    })
-    it('indexes', function () {
-      const id = getId()
-      expect(userReducer(getDefaultState(), actions.index(name, [{id}])).data).toEqual(new Map({[id]: new UserModel({id})}))
+    it('creates Multi', function () {
+      const id = getId()  
+      expect(usersReducer(undefined, actions.link(name, {relationshipName: 'friends', id, relationshipValue: friendId})).friends).toEqual(new Map({[id]: OrderedSet([friendId])}))
     })
   })
 })

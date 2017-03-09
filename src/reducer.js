@@ -1,42 +1,65 @@
 // @flow
+import {Map} from 'immutable'
 import {handleActions} from 'redux-actions'
-import actionNames from './actionNames'
+import actionNames from 'resource-action-types'
 import handlers from './handlers'
 import generateDefaultState from './generateDefaultState'
+import {ONE, MANY} from './relationshipTypes'
+type $relationshipDefinition = {
+  name: string;
+  type: number;
+  relatedEntityName: string;
+}
 
 type $props = {
   name: string,
   defaultStateConfig?: Object,
 	options?: Object,
   otherActions?: Object,
-  modelGenerator?: (entity: Object) => Class<any>,
-  Model?: Class<any>,
   locationPath?: string[],
+  relationshipDefinitions: $relationshipDefinition[]
 };
 
-export default function(Immutable){
-  return function ({name, Model, modelGenerator, defaultStateConfig = {}, otherActions = {}, locationPath}: $props) {
-    let finalModelGenerator
-    if (Model) {
-      // $FlowFixMe
-      finalModelGenerator = () => Model
-    }
-    else if (modelGenerator) {
-      finalModelGenerator = modelGenerator
-    }
-    else {
-      throw new TypeError('please include Model name')
-    }
+function getMapOfRelationshipDefaultValues(relationshipDefinitions){
+  return relationshipDefinitions.reduce((finalResult, {name}) => {
+    finalResult[name] = new Map()
+    return finalResult
+  }, {})
+}
 
-    return handleActions(
-      {
-        [actionNames.create(name)]: handlers.create(finalModelGenerator, locationPath),
-        [actionNames.update(name)]: handlers.update(locationPath),
-        [actionNames.remove(name)]: handlers.remove(locationPath),
-        [actionNames.get(name)]: handlers.get(finalModelGenerator, locationPath),
-        [actionNames.index(name)]: handlers.index(finalModelGenerator, locationPath),
-        ...otherActions
-      },
-      generateDefaultState(Immutable, {data: new Immutable.Map(), ...defaultStateConfig}))
-  }
+function getMapOfRelationshipTypes(relationshipDefinitions){
+  return relationshipDefinitions.reduce((finalResult, {name, type})=>{
+    finalResult[name] = type
+    return finalResult
+  }, {})
+}
+
+function getMapOfRelationships(relationshipDefinitions){
+  return relationshipDefinitions.reduce((finalResult, {name, relatedEntityName})=>{
+    if(!finalResult[relatedEntityName]){
+      finalResult[relatedEntityName] = []
+    }
+    finalResult.push(name)
+    return finalResult
+  }, {})
+}
+
+export default function ({name, relationshipDefinitions, defaultStateConfig = {}, otherActions = {}}: $props) {
+  const mapOfRelationshipDefaultValues = getMapOfRelationshipDefaultValues(relationshipDefinitions)
+  const mapOfRelationshipTypes = getMapOfRelationshipTypes(relationshipDefinitions)
+  const mapOfRelationships = getMapOfRelationships(relationshipDefinitions)
+  const removeActions = Object.keys(mapOfRelationships).reduce((finalResult, relatedEntityName)=>{
+    finalResult[actionNames.remove(relatedEntityName)] = handlers.remove(mapOfRelationshipTypes, mapOfRelationships, relatedEntityName)
+    return finalResult
+  }, {})
+  return handleActions(
+    {
+      [actionNames.link(name)]: handlers.link(mapOfRelationshipTypes),
+      [actionNames.unlink(name)]: handlers.unlink(mapOfRelationshipTypes),
+      [actionNames.createRelationship(name)]: handlers.createRelationship(mapOfRelationshipTypes),
+      [actionNames.indexRelationship(name)]: handlers.indexRelationship(mapOfRelationshipTypes),
+      ...removeActions,
+      ...otherActions
+    },
+    generateDefaultState({...mapOfRelationshipDefaultValues, ...defaultStateConfig}))
 }

@@ -1,66 +1,94 @@
 // @flow
-import mergeDeepOverwriteList from './mergeDeepOverwriteList'
+import {OrderedSet, Map, Record} from 'immutable'
+import {MANY, ONE} from './relationshipTypes'
 type $modelGenerator = (ent: Object)=>Class<any>
 type $location = string[];
 export default {
-  create(modelGenerator: $modelGenerator, location: $location = ['data']) {
-    return function (state: Object, {payload, error}: Object) {
+  link(mapOfRelationshipTypes: Object) {
+    return function (state: Map<string, any>, {payload, error}: Object) {
       if (error) {
         return state
       }
-      const Model = modelGenerator(payload.entity)
-      const entity = new Model(payload.entity)
-      const nextState = state.setIn(location.concat([`${payload.entity.id}`]), entity)
-      return nextState
+      const {relationshipName, id, relationshipValue} = payload.relationship
+      const relationshipType = mapOfRelationshipTypes[relationshipName]
+      if (relationshipType === MANY){
+        return state.updateIn([relationshipName, `${id}`], (ids: any) => {
+          if(ids){
+            return ids.add(relationshipValue)
+          }
+          return new OrderedSet([relationshipValue])
+        })
+      }
+      return state.setIn([relationshipName, `${id}`], relationshipValue)
+    }
+  },
+  createRelationship(mapOfRelationshipTypes: Object) {
+    return function (state: Map<string, any>, {payload, error}: Object) {
+      if (error) {
+        return state
+      }
+      const {relationshipName, id, relationshipValue} = payload.relationship
+      const relationshipType = mapOfRelationshipTypes[relationshipName]
+      if (relationshipType === MANY){
+        return state.setIn([relationshipName, `${id}`], new OrderedSet([relationshipValue]))
+      }
+      return state.setIn([relationshipName, `${id}`], relationshipValue)
+    }
+  },
+  
+  unlink(mapOfRelationshipTypes: Object) {
+    return function (state: Map<string, any>, {payload, error}: Object) {
+      if (error) {
+        return state
+      }
+      const {relationshipName, id, relationshipValue} = payload.relationship
+      const relationshipType = mapOfRelationshipTypes[relationshipName]
+      if (relationshipType === MANY){
+        return state.updateIn([relationshipName, `${id}`], (ids: any) => {
+          if(ids){
+            return ids.remove(relationshipValue)
+          }
+          return new OrderedSet()
+        })
+      }
+      return state.setIn([relationshipName, `${id}`], 0)
     }
   },
 
-  remove(location: $location = ['data']){
-    return function (state: Object, {payload, error}: Object) {
+  indexRelationship(mapOfRelationshipTypes: Object) {
+    return function (state: Map<string, any>, {payload, error}: Object) {
       if (error) {
         return state
       }
-      return state.deleteIn(location.concat([`${payload.entityId}`]))
-    }
-  },
-
-  update(location: $location = ['data']){
-    return function (state: Object, {payload, error}: Object) {
-      if (error) {
-        return state
-      }
-      const {id, ...otherProps} = payload.entity
-      return state.mergeIn(location.concat([`${id}`]), otherProps)
-    }
-  },
-  get(modelGenerator: $modelGenerator, location: $location = ['data']) {
-    return function (state: Object, {payload, error}: Object) {
-      if (error) {
-        return state
-      }
-      return state.updateIn(location.concat([`${payload.entity.id}`]), previousEntity => {
-        if (previousEntity) {
-          return previousEntity.mergeWith(mergeDeepOverwriteList, payload.entity)
-        }
-        return new (modelGenerator(payload.entity))(payload.entity)
+      const {relationshipName, idValuePairs} = payload.relationships
+      const relationshipType = mapOfRelationshipTypes[relationshipName]
+      return state.updateIn([relationshipName], relationships=>{
+        idValuePairs.reduce((finalResult, {id, value})=>{
+          const finalValue = relationshipType === MANY ? new OrderedSet(value) : value
+          finalResult.set(`id`, finalValue)
+          return finalResult
+        }, relationships)
       })
     }
   },
-
-  index(modelGenerator: $modelGenerator, location: $location = ['data']) {
-    return function (state: Object, {payload, error}: Object) {
+  remove(mapOfRelationshipTypes: Object, mapOfRelationships: Object, entityName: string) {
+    return function (state: Map<string, any>, {payload, error}: Object) {
       if (error) {
         return state
       }
-      return payload.entities.reduce((finalResult, entity) => {
-        return finalResult.updateIn(location.concat([`${entity.id}`]), previousEntity => {
-          if (previousEntity) {
-            return previousEntity.mergeWith(mergeDeepOverwriteList, entity)
-          }
-          const Model = modelGenerator(entity)
-          return new Model(entity)
+      const {id} = payload
+      const relationshipNames = mapOfRelationships[entityName]
+      return relationshipNames.reduce((finalResult, relationshipName)=>{
+        const relationshipType = mapOfRelationshipTypes[relationshipName]
+        if (relationshipType === MANY){
+          return finalResult.updateIn([relationshipName], (mapOfIds: Map<string, OrderedSet<number | string>>) => {
+            return mapOfIds.map(ids=>ids && ids.delete(id))
+          })
+        }
+        return finalResult.updateIn([relationshipName], (mapOfIds: Map<string, OrderedSet<number | string>>) => {
+          return mapOfIds.map(idValue=>idValue === id ? 0 : idValue)
         })
       }, state)
     }
-  }
+  },
 }
